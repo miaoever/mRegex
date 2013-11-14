@@ -1,4 +1,4 @@
-mREX
+mRegex
 ====
 
-A lightweight regular expression engine
+A lightweight regular expression engine.
