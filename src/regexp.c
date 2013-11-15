@@ -193,13 +193,86 @@ State* post2nfa(char* postfix)
 #undef push
 }
 
+List* startlist(State* start, List *l)
+{
+    l->n = 0;
+    listid++;
+    addstate(l, start);
+    return l;
+}
+
+int ismatch(List *l)
+{
+    int i;
+    for(i = 0; i < l->n; i++){
+        if (l->s[i] == &matchstate)
+            return 1;
+    }
+    return 0;
+}
+
+void addstate(List* l, State* s)
+{
+    if (s == NULL || s->lastlist == listid)
+        return;
+
+    s->lastlist = listid;
+    if (s->type == Split){
+        addstate(l, s->out1);
+        addstate(l, s->out2);
+        return;
+    }
+    l->s[l->n++] = s;
+}
+
+void step(List* clist, int type, List* nlist)
+{
+    int i;
+    State* s;
+
+    listid++;
+    nlist->n = 0;
+    for (i = 0; i < clist->n; i++){
+        s = clist->s[i];
+        if (s->type == type)
+            addstate(nlist, s->out1);
+    }
+}
+
+int match(State* start, char* s)
+{
+    int i, type;
+    List* clist, *nlist, *t;
+
+    clist = startlist(start, &l1);
+    nlist = &l2;
+    for (; *s; s++){
+        type = *s & 0xFF;
+        step(clist, type, nlist);
+        t = clist; clist = nlist; nlist = t;
+    }
+    return ismatch(clist);
+}
+
 int main(int argc, char** argv ){
     char* post = re2post(argv[1]);
+    State* start;
     if (post == NULL){
         printf("bad regexp %s\n", argv[1]);
         return 1;
     }
-    printf("postexp: %s\n", post);
+    //printf("postexp: %s\n", post);
+    start = post2nfa(post);
+    if (start == NULL){
+        printf("Error in post2nfa %s\n", post);
+        return 1;
+    }
+
+    l1.s = malloc(nstate * sizeof l1.s[0]);
+    l2.s = malloc(nstate * sizeof l2.s[0]);
+    if (match(start, argv[2]))
+        printf("Matched !! %s\n", argv[2]);
+
 
     return 0;
 }
