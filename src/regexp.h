@@ -6,7 +6,9 @@
 enum
 {
     Match = 256,
-    Split = 257
+    Split = 257,
+    AnyWord = 258,
+    AnyDigit = 259
 };
 
 typedef struct State State;
@@ -52,6 +54,9 @@ int ismatch(List *l);
 void addstate(List* l, State* s);
 void step(List* clist, int type, List* nlist);
 int match(State* start, char* s);
+int isAlpha(int type);
+int isDight(int type);
+int isUnderscore(int type);
 
 List l1, l2;
 static int listid;

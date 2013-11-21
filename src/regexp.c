@@ -56,7 +56,8 @@ char* re2post(char* re)
             case '|':
                 if (num_char == 0)
                     return NULL;
-                if (num_char > 1)
+                //if (num_char > 1)
+                while (--num_char > 0)
                     *dst++ = '.';
                 num_alt ++;
                 break;
@@ -64,25 +65,34 @@ char* re2post(char* re)
             case '*':
             case '?':
                 if (num_char == 0)
-                        return NULL;
+                    return NULL;
                 *dst++ = *re;
+                break;
+            case '\\':
+                if (num_char > 1){
+                    *dst++ = '.';
+                    num_char--;
+                }
+                *dst++ = *re++;
+                *dst++ = *re;
+                num_char++;
                 break;
             default:
                 if (num_char > 1){
                     *dst++ = '.';
-                    num_char --;
+                    num_char--;
                 }
                 *dst++ = *re;
-                num_char ++;
+                num_char++;
                 break;
         }
     }
     if (cur_level != paren_stack)
         return NULL;
-    if (num_char > 1){
+    while (--num_char > 0){
         *dst++ = '.';
     }
-    if (num_alt > 0){
+    for (;num_alt > 0; num_alt--){
         *dst++ = '|';
     }
     *dst = '\0';
@@ -144,7 +154,7 @@ State* post2nfa(char* postfix)
     char *p;
     Frag stack[1000], *stackp, e1, e2, e;
     State* s;
-
+    //printf("%s\n", postfix);
     if (postfix == NULL)
         return NULL;
 
@@ -177,6 +187,20 @@ State* post2nfa(char* postfix)
                 s = state(Split, e.start, NULL);
                 patch(e.out, s);
                 push(frag(e.start, list(&s->out2)));
+                break;
+            case '\\':
+                p++;
+                switch(*p)
+                {
+                    case 'w':
+                        s = state(AnyWord, NULL, NULL);
+                        push(frag(s, list(&s->out1)));
+                        break;
+                    case 'd':
+                        s = state(AnyDigit, NULL, NULL);
+                        push(frag(s, list(&s->out1)));
+                        break;
+                }
                 break;
             default:
                 s = state(*p, NULL, NULL);
@@ -234,7 +258,13 @@ void step(List* clist, int type, List* nlist)
     nlist->n = 0;
     for (i = 0; i < clist->n; i++){
         s = clist->s[i];
-        if (s->type == type)
+        if (s->type == AnyWord){
+            if (isAlpha(type) || isDight(type) || isUnderscore(type))
+                addstate(nlist, s->out1);
+        }else if (s->type == AnyDigit){
+            if (isDight(type))
+                addstate(nlist, s->out1);
+        }else if (s->type == type)
             addstate(nlist, s->out1);
     }
 }
@@ -254,7 +284,8 @@ int match(State* start, char* s)
     return ismatch(clist);
 }
 
-int main(int argc, char** argv ){
+int main(int argc, char** argv )
+{
     char* post = re2post(argv[1]);
     State* start;
     if (post == NULL){
@@ -275,4 +306,28 @@ int main(int argc, char** argv ){
 
 
     return 0;
+}
+
+int isAlpha(int type)
+{
+    if ( (type - 'a' >= 0 && type - 'z' <= 0) || (type - 'A' >= 0 && type - 'Z' <= 0) )
+        return 1;
+    else
+        return 0;
+}
+
+int isDight(int type)
+{
+    if (type - '0' >= 0 && type - '9' <= 0)
+        return 1;
+    else
+        return 0;
+}
+
+int isUnderscore(int type)
+{
+    if (type - '_' == 0)
+        return 1;
+    else
+        return 0;
 }
