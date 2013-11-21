@@ -8,7 +8,8 @@ enum
     Match = 256,
     Split = 257,
     AnyWord = 258,
-    AnyDigit = 259
+    AnyDigit = 259,
+    AnySpace = 260
 };
 
 typedef struct State State;
@@ -57,6 +58,7 @@ int match(State* start, char* s);
 int isAlpha(int type);
 int isDight(int type);
 int isUnderscore(int type);
+int isSpace(int type);
 
 List l1, l2;
 static int listid;

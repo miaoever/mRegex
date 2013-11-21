@@ -200,6 +200,10 @@ State* post2nfa(char* postfix)
                         s = state(AnyDigit, NULL, NULL);
                         push(frag(s, list(&s->out1)));
                         break;
+                    case 's':
+                        s = state(AnySpace, NULL, NULL);
+                        push(frag(s, list(&s->out1)));
+                        break;
                 }
                 break;
             default:
@@ -258,14 +262,25 @@ void step(List* clist, int type, List* nlist)
     nlist->n = 0;
     for (i = 0; i < clist->n; i++){
         s = clist->s[i];
-        if (s->type == AnyWord){
-            if (isAlpha(type) || isDight(type) || isUnderscore(type))
-                addstate(nlist, s->out1);
-        }else if (s->type == AnyDigit){
-            if (isDight(type))
-                addstate(nlist, s->out1);
-        }else if (s->type == type)
-            addstate(nlist, s->out1);
+        switch (s->type)
+        {
+            case AnyWord:
+                if (isAlpha(type) || isDight(type) || isUnderscore(type))
+                    addstate(nlist, s->out1);
+                break;
+            case AnyDigit:
+                if (isDight(type))
+                    addstate(nlist, s->out1);
+                break;
+            case AnySpace:
+                if (isSpace(type))
+                    addstate(nlist, s->out1);
+                break;
+            default:
+                if (s->type == type)
+                     addstate(nlist, s->out1);
+                break;
+        }
     }
 }
 
@@ -310,24 +325,20 @@ int main(int argc, char** argv )
 
 int isAlpha(int type)
 {
-    if ( (type - 'a' >= 0 && type - 'z' <= 0) || (type - 'A' >= 0 && type - 'Z' <= 0) )
-        return 1;
-    else
-        return 0;
+    return ((type - 'a' >= 0 && type - 'z' <= 0) || (type - 'A' >= 0 && type - 'Z' <= 0))? 1 : 0;
 }
 
 int isDight(int type)
 {
-    if (type - '0' >= 0 && type - '9' <= 0)
-        return 1;
-    else
-        return 0;
+    return (type - '0' >= 0 && type - '9' <= 0)? 1 : 0;
 }
 
 int isUnderscore(int type)
 {
-    if (type - '_' == 0)
-        return 1;
-    else
-        return 0;
+    return (type - '_' == 0)? 1 : 0;
+}
+
+int isSpace(int type)
+{
+    return (type == '\t' || type == '\r' || type == '\n' || type == ' ')? 1 : 0;
 }
