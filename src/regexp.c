@@ -77,6 +77,11 @@ char* re2post(char* re)
                 *dst++ = *re;
                 num_char++;
                 break;
+            case '{':
+                while (*re != '}')
+                    *dst++ = *re++;
+                *dst++ = *re;
+                break;
             default:
                 if (num_char > 1){
                     *dst++ = '.';
@@ -152,8 +157,9 @@ Statelist* append(Statelist *l1, Statelist *l2)
 State* post2nfa(char* postfix)
 {
     char *p;
-    Frag stack[1000], *stackp, e1, e2, e;
-    State* s;
+    Frag stack[1000], *stackp, e1, e2, e3, e;
+    State* s, *s1;
+    int min = 0, max = 0, i = 0;
     //printf("%s\n", postfix);
     if (postfix == NULL)
         return NULL;
@@ -188,6 +194,11 @@ State* post2nfa(char* postfix)
                 patch(e.out, s);
                 push(frag(e.start, list(&s->out2)));
                 break;
+            case '?':
+		        e = pop();
+			    s = state(Split, e.start, NULL);
+			    push(frag(s, append(e.out, list(&s->out2))));
+			    break;
             case '\\':
                 p++;
                 switch(*p)
@@ -205,6 +216,67 @@ State* post2nfa(char* postfix)
                         push(frag(s, list(&s->out1)));
                         break;
                 }
+                break;
+            case '{':
+                p++;
+                while (*p != ',' && *p != '}'){
+                    min = min * 10 + *p -'0';
+                    p++;
+                }
+
+                e = pop();
+                push(e);
+                for(;i < min - 2; i++){
+                    s = state(e.start->type, NULL, NULL);
+                    e2 = frag(s, list(&s->out1));
+                    e1 = pop();
+                    patch(e1.out, e2.start);
+                    push(frag(e1.start, e2.out));
+                }
+                if (*p == ','){
+                    p++;
+                    if (*p == '}'){
+                        s = state(e.start->type, NULL, NULL);
+                        e1 = frag(s, list(&s->out1));
+
+                        s = state(Split, e1.start, NULL);
+                        patch(e1.out, s);
+                        e2 = frag(e1.start, list(&s->out2));
+                        //connect
+                        e1 = pop();
+                        patch(e1.out, e2.start);
+                        push(frag(e1.start, e2.out));
+                    }else{
+                        while (*p != '}'){
+                            max = max * 10 + *p - '0';
+                            p++;
+                        }
+                        s = state(e.start->type, NULL, NULL);
+                        e2 = frag(s, list(&s->out1));
+                        e1 = pop();
+                        patch(e1.out, e2.start);
+                        push(frag(e1.start, e2.out));
+
+                        for (i = 0; i < max - min; i++){
+                            s = state(e.start->type, NULL, NULL);
+                            e1 = frag(s, list(&s->out1));
+
+			                s = state(Split, e1.start, NULL);
+			                e2 = frag(s, append(e1.out, list(&s->out2)));
+                            //connect
+                            e1 = pop();
+                            patch(e1.out, e2.start);
+                            push(frag(e1.start, e2.out));
+                        }
+                    }
+                }else{
+                    s = state(e.start->type, NULL, NULL);
+                    e2 = frag(s, list(&s->out1));
+                    e1 = pop();
+                    patch(e1.out, e2.start);
+                    push(frag(e1.start, e2.out));
+                }
+                //printf("Element in the stack: %ld\n",stackp - stack);
                 break;
             default:
                 s = state(*p, NULL, NULL);
